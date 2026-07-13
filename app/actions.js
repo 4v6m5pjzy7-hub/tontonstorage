@@ -9,6 +9,7 @@ import { requireAuth } from './auth.js';
 import { addMonths, TERM_MONTHS } from '../lib/format.js';
 import {
   sendIntakeLink,
+  sendNewIntakeNotice,
   notifyProviderOfChoice,
   sendExtensionOffer,
 } from '../lib/email.js';
@@ -103,6 +104,13 @@ export async function submitIntake(formData) {
     .from('rentals')
     .update({ client, status: 'submitted', submitted_at: new Date().toISOString() })
     .eq('id', rental.id);
+
+  // Notify staff. Don't let an email hiccup break the customer's submission.
+  try {
+    await sendNewIntakeNotice({ ...rental, client });
+  } catch (e) {
+    console.error('new-intake notify failed:', e);
+  }
 
   redirect(`/intake/${tok}`);
 }
