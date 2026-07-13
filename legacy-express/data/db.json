@@ -1,0 +1,48 @@
+{
+  "rentals": [
+    {
+      "id": "fda02a7b-9ad0-4f16-b6e6-b283504b0fcf",
+      "token": "54b001ad13868d4c4d",
+      "status": "active",
+      "createdAt": 1783905159279,
+      "client": {
+        "name": "John Boater",
+        "phone": "954-555-0100",
+        "email": "john@example.com",
+        "property": {
+          "boat": "1",
+          "trailer": "1",
+          "rv": "0",
+          "vehicle": "0",
+          "other": "",
+          "makeModel": "SeaRay 240",
+          "length": "24 ft",
+          "licenseReg": "FL1234AB",
+          "insurance": "Geico #99887"
+        }
+      },
+      "terms": {
+        "termType": "fixed-6",
+        "monthlyFee": "185",
+        "paymentSchedule": "monthly",
+        "paymentMethod": "zelle",
+        "agreementDate": "2026-07-12",
+        "startDate": "2026-08-01"
+      },
+      "submittedAt": 1783905159360,
+      "finalizedAt": 1783905159396
+    },
+    {
+      "id": "d4fcdc83-0d37-43fc-97cb-24c01c55f2eb",
+      "token": "a117cc3a028d037a6a",
+      "status": "pending",
+      "createdAt": 1783905359740,
+      "client": null,
+      "terms": null,
+      "contact": {
+        "email": "client@example.com",
+        "phone": "954-555-0100"
+      }
+    }
+  ]
+}
