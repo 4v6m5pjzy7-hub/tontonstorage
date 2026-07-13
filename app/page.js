@@ -1,12 +1,14 @@
 import Link from 'next/link';
 import { getSupabase, supabaseConfigured } from '../lib/supabase.js';
 import { createIntake, logout } from './actions.js';
+import { requireAuth } from './auth.js';
 import { StatusPill } from './ui.js';
 import { TERM_LABELS, money, prettyDate, daysUntil } from '../lib/format.js';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Dashboard() {
+  requireAuth();
   if (!supabaseConfigured()) return <SetupNotice />;
 
   const sb = getSupabase();

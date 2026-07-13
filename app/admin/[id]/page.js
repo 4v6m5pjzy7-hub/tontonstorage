@@ -6,6 +6,7 @@ import { StatusPill } from '../../ui.js';
 import CopyButton from '../../CopyButton.js';
 import { emailConfigured } from '../../../lib/email.js';
 import { TERM_LABELS, money, prettyDate, addMonths } from '../../../lib/format.js';
+import { requireAuth } from '../../auth.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +15,7 @@ function appUrl() {
 }
 
 export default async function AdminFile({ params, searchParams }) {
+  requireAuth();
   if (!supabaseConfigured()) notFound();
   const sb = getSupabase();
   const { data: r } = await sb.from('rentals').select('*').eq('id', params.id).single();

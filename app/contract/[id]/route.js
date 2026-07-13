@@ -1,9 +1,11 @@
 import { getSupabase, supabaseConfigured } from '../../../lib/supabase.js';
 import { renderContract } from '../../../lib/documents.js';
+import { requireAuth } from '../../auth.js';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request, { params }) {
+  requireAuth();
   if (!supabaseConfigured()) return new Response('Not configured', { status: 500 });
   const sb = getSupabase();
   const { data: r } = await sb.from('rentals').select('*').eq('id', params.id).single();

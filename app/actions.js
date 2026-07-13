@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { getSupabase } from '../lib/supabase.js';
+import { requireAuth } from './auth.js';
 import { addMonths, TERM_MONTHS } from '../lib/format.js';
 import {
   sendIntakeLink,
@@ -40,6 +41,7 @@ export async function logout() {
 
 // ---- Provider: create a new intake link ----
 export async function createIntake() {
+  requireAuth();
   const sb = getSupabase();
   const { data, error } = await sb
     .from('rentals')
@@ -52,6 +54,7 @@ export async function createIntake() {
 
 // ---- Provider: save client contact + optionally email the link ----
 export async function saveContactAndSend(formData) {
+  requireAuth();
   const sb = getSupabase();
   const id = formData.get('id');
   const email = (formData.get('email') || '').trim();
@@ -106,6 +109,7 @@ export async function submitIntake(formData) {
 
 // ---- Provider: set term + rate (finalize the deal) ----
 export async function saveTerms(formData) {
+  requireAuth();
   const sb = getSupabase();
   const id = formData.get('id');
   const termType = formData.get('termType');
@@ -158,6 +162,7 @@ export async function recordRenewalChoice(formData) {
 
 // ---- Provider: offer extension options + email addendum to tenant ----
 export async function sendExtension(formData) {
+  requireAuth();
   const sb = getSupabase();
   const id = formData.get('id');
   const months = Number(formData.get('months'));
