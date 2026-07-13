@@ -11,7 +11,7 @@ import { requireAuth } from '../../auth.js';
 export const dynamic = 'force-dynamic';
 
 function appUrl() {
-  return process.env.APP_URL || 'http://localhost:3500';
+  return (process.env.APP_URL || 'http://localhost:3500').replace(/\/+$/, '');
 }
 
 export default async function AdminFile({ params, searchParams }) {
