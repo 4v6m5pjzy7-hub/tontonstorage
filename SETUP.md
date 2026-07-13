@@ -24,7 +24,7 @@ Save the TonTon logo image as **`public/logo.png`** (used on screen, in the cont
 ## 3. Resend
 1. In Resend, verify the sending domain for `thetrailerteam.com` (Domains → Add).
 2. Create an **API key**.
-3. `EMAIL_FROM` must use a verified domain, e.g. `TonTon Trailer Rentals <storage@thetrailerteam.com>`.
+3. `EMAIL_FROM` must use a verified domain, e.g. `TonTon Trailer Rentals <info@thetrailerteam.com>`.
 
 ## 4. Environment variables
 Copy `.env.local.example` to `.env.local` and fill in:

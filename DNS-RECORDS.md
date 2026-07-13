@@ -14,7 +14,7 @@ replace those; they sit alongside them.
 
 ---
 
-## Group 1 - Email (add now; turns on sending from storage@thetrailerteam.com)
+## Group 1 - Email (add now; turns on sending from info@thetrailerteam.com)
 
 | # | Type | Host / Name | Value | Priority | TTL |
 |---|------|-------------|-------|----------|-----|
