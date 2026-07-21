@@ -147,7 +147,7 @@ export default async function Dashboard({ searchParams }) {
                         <br /><span className="muted">{r.terms?.monthlyFee ? `${money(r.terms.monthlyFee)}/mo` : '—'}</span>
                       </td>
                       <td>{new Date(r.deleted_at).toLocaleDateString('en-US')}</td>
-                      <td>{gone} day{gone === 1 ? '' : 's'}</td>
+                      <td>{`${gone} day${gone === 1 ? '' : 's'}`}</td>
                       <td style={{ display: 'flex', gap: 8 }}>
                         <form action={restoreRental}>
                           <input type="hidden" name="id" value={r.id} />
