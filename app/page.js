@@ -4,6 +4,11 @@ import { createIntake, logout, restoreRental, purgeRental } from './actions.js';
 import { requireAuth } from './auth.js';
 import { LifecyclePill, RenewalPill, lifecycle, TABS, DELETED_TAB, RESTORE_WINDOW_DAYS } from './ui.js';
 import PurgeButton from './PurgeButton.js';
+import CopyButton from './CopyButton.js';
+
+function appUrl() {
+  return (process.env.APP_URL || 'http://localhost:3500').replace(/\/+$/, '');
+}
 import { TERM_LABELS, money, prettyDate, daysUntil, LOCATIONS, locationLabel, monthKey, monthLabel, shareAmount } from '../lib/format.js';
 
 export const dynamic = 'force-dynamic';
@@ -90,6 +95,20 @@ export default async function Dashboard({ searchParams }) {
       </div>
 
       {searchParams?.deleted === '1' && <div className="banner ok">Rental deleted.</div>}
+      {searchParams?.restored === '1' && <div className="banner ok">Rental restored.</div>}
+
+      <div className="card" style={{ background: 'var(--blue-soft)', borderColor: '#c6dcf7' }}>
+        <h2 style={{ marginBottom: 6 }}>Public intake link</h2>
+        <p className="muted" style={{ margin: '0 0 10px' }}>
+          One reusable link for your website, social media, or onboarding several people at once.
+          Every person who fills it out becomes their own separate lead, no crossed wires.
+        </p>
+        <div className="linkbox">
+          <input readOnly value={`${appUrl()}/apply`} />
+          <CopyButton text={`${appUrl()}/apply`} />
+          <a className="btn alt" href="/apply" target="_blank" rel="noreferrer">Open</a>
+        </div>
+      </div>
 
       {whiskeyCount > 0 && (
         <div className="banner info" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>

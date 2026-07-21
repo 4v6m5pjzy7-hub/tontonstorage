@@ -86,15 +86,8 @@ export async function saveContactAndSend(formData) {
   redirect(`/admin/${id}`);
 }
 
-// ---- Client: submit intake form ----
-export async function submitIntake(formData) {
-  const sb = getSupabase();
-  const tok = formData.get('token');
-  const { data: rental } = await sb.from('rentals').select('*').eq('token', tok).single();
-  if (!rental) throw new Error('Invalid link');
-  if (rental.client) redirect(`/intake/${tok}`); // already submitted
-
-  const client = {
+function clientFromForm(formData) {
+  return {
     name: formData.get('name'),
     phone: formData.get('phone'),
     email: formData.get('email'),
@@ -110,6 +103,17 @@ export async function submitIntake(formData) {
       insurance: formData.get('insurance'),
     },
   };
+}
+
+// ---- Client: submit a per-customer intake link (updates that one record) ----
+export async function submitIntake(formData) {
+  const sb = getSupabase();
+  const tok = formData.get('token');
+  const { data: rental } = await sb.from('rentals').select('*').eq('token', tok).single();
+  if (!rental) throw new Error('Invalid link');
+  if (rental.client) redirect(`/intake/${tok}`); // already submitted
+
+  const client = clientFromForm(formData);
 
   await sb
     .from('rentals')
@@ -124,6 +128,34 @@ export async function submitIntake(formData) {
   }
 
   redirect(`/intake/${tok}`);
+}
+
+// ---- Client: submit the generic public link (creates a NEW record each time) ----
+// This is the reusable link for the website / social media and for onboarding
+// several people at once - every submission is its own independent rental.
+export async function submitPublicIntake(formData) {
+  const sb = getSupabase();
+  const client = clientFromForm(formData);
+  if (!client.name || !client.email) redirect('/apply?e=1');
+
+  const rental = {
+    token: token(),
+    renew_token: token(),
+    status: 'submitted',
+    submitted_at: new Date().toISOString(),
+    client,
+  };
+
+  const { data: created, error } = await sb.from('rentals').insert(rental).select('*').single();
+  if (error) throw new Error(error.message);
+
+  try {
+    await sendNewIntakeNotice(created);
+  } catch (e) {
+    console.error('new-intake notify failed:', e);
+  }
+
+  redirect('/apply?done=1');
 }
 
 // ---- Provider: set term + rate (finalize the deal) ----
