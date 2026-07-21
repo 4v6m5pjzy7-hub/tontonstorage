@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getSupabase, supabaseConfigured } from '../../../lib/supabase.js';
-import { saveContactAndSend, saveTerms, sendExtension, confirmPayment, saveContractProgress, deleteRental, setLocation } from '../../actions.js';
+import { saveContactAndSend, saveTerms, sendExtension, confirmPayment, saveContractProgress, deleteRental, setLocation, sendSignRequest } from '../../actions.js';
 import DeleteButton from '../../DeleteButton.js';
+import SubmitButton from '../../SubmitButton.js';
 import { StatusPill } from '../../ui.js';
 import CopyButton from '../../CopyButton.js';
 import { emailConfigured } from '../../../lib/email.js';
@@ -34,6 +35,7 @@ export default async function AdminFile({ params, searchParams }) {
     searchParams?.ext === '1' ? <div className="banner ok">Extension addendum emailed to the tenant.</div> :
     searchParams?.paid === '1' ? <div className="banner ok">Payment recorded and confirmation emailed to the customer.</div> :
     searchParams?.saved === '1' ? <div className="banner ok">Contract status saved.</div> :
+    searchParams?.sent_sign === '1' ? <div className="banner ok">Signing link emailed to the customer.</div> :
     null;
 
   const types = [];
@@ -224,9 +226,32 @@ export default async function AdminFile({ params, searchParams }) {
 
             <div className="actions">
               <button className="btn">Save contract status</button>
-              <a className="btn blue" href={`/contract/${r.id}`} target="_blank" rel="noreferrer">Preview contract →</a>
+              <a className="btn alt" href={`/contract/${r.id}`} target="_blank" rel="noreferrer">Preview contract →</a>
             </div>
           </form>
+
+          <hr style={{ border: 0, borderTop: '1px solid var(--line)', margin: '20px 0' }} />
+
+          {t.signature?.signedAt ? (
+            <div className="banner ok">
+              Signed electronically by <strong>{t.signature.name}</strong> on {prettyDate(t.signedAt)}
+              {t.signature.ip ? ` (IP ${t.signature.ip})` : ''}. Signature is on the contract.
+            </div>
+          ) : (
+            <>
+              <p className="muted" style={{ marginBottom: 10 }}>
+                <strong>Send it for e-signature.</strong> The customer gets a link, reads the agreement on
+                their phone, signs with their finger, and it comes straight back. No printing or scanning.
+              </p>
+              <form action={sendSignRequest}>
+                <input type="hidden" name="id" value={r.id} />
+                <SubmitButton className="btn blue" pendingText="Sending…">Email for signature →</SubmitButton>
+              </form>
+            </>
+          )}
+          <p className="muted" style={{ marginTop: 10 }}>
+            Signing link: <code style={{ fontSize: 12 }}>{appUrl()}/sign/{r.token}</code>
+          </p>
         </div>
       )}
 

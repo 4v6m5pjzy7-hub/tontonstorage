@@ -3,7 +3,7 @@
 import crypto from 'crypto';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { getSupabase } from '../lib/supabase.js';
 import { requireAuth } from './auth.js';
 import {
@@ -19,6 +19,8 @@ import {
   notifyProviderOfChoice,
   sendExtensionOffer,
   sendPaymentConfirmation,
+  sendSignatureRequest,
+  sendSignedCopy,
 } from '../lib/email.js';
 
 function token(n = 9) {
@@ -194,6 +196,67 @@ export async function saveContractProgress(formData) {
   await sb.from('rentals').update({ terms }).eq('id', id);
   revalidatePath(`/admin/${id}`);
   redirect(`/admin/${id}?saved=1`);
+}
+
+// ---- Provider: email the customer a link to sign electronically ----
+export async function sendSignRequest(formData) {
+  requireAuth();
+  const sb = getSupabase();
+  const id = formData.get('id');
+  const { data: rental } = await sb.from('rentals').select('*').eq('id', id).single();
+  if (!rental) throw new Error('Rental not found');
+
+  await sendSignatureRequest(rental);
+
+  const terms = {
+    ...(rental.terms || {}),
+    contractSentAt: rental.terms?.contractSentAt || new Date().toISOString().slice(0, 10),
+  };
+  await sb.from('rentals').update({ terms }).eq('id', id);
+
+  revalidatePath(`/admin/${id}`);
+  redirect(`/admin/${id}?sent_sign=1`);
+}
+
+// ---- Customer: sign the agreement electronically ----
+export async function signContract(formData) {
+  const sb = getSupabase();
+  const tok = formData.get('token');
+  const signerName = (formData.get('signerName') || '').trim();
+  const signatureData = formData.get('signatureData') || '';
+  const agreed = formData.get('agree') === 'on';
+
+  if (!signerName) redirect(`/sign/${tok}?e=name`);
+  if (!signatureData.startsWith('data:image')) redirect(`/sign/${tok}?e=sig`);
+  if (!agreed) redirect(`/sign/${tok}?e=agree`);
+
+  const { data: rental } = await sb.from('rentals').select('*').eq('token', tok).single();
+  if (!rental) throw new Error('Invalid link');
+  if (rental.terms?.signature?.signedAt) redirect(`/sign/${tok}`); // already signed
+
+  const h = headers();
+  const now = new Date();
+  const terms = {
+    ...(rental.terms || {}),
+    signedAt: now.toISOString().slice(0, 10),
+    signature: {
+      name: signerName,
+      dataUrl: signatureData,
+      signedAt: now.toISOString(),
+      ip: h.get('x-forwarded-for')?.split(',')[0]?.trim() || null,
+      userAgent: h.get('user-agent') || null,
+    },
+  };
+
+  await sb.from('rentals').update({ terms }).eq('id', rental.id);
+
+  try {
+    await sendSignedCopy({ ...rental, terms });
+  } catch (e) {
+    console.error('signed-copy email failed:', e);
+  }
+
+  redirect(`/sign/${tok}`);
 }
 
 // ---- Provider: tag a rental with its yard location + spot ----
