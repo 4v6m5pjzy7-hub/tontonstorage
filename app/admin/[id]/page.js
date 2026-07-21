@@ -1,12 +1,12 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getSupabase, supabaseConfigured } from '../../../lib/supabase.js';
-import { saveContactAndSend, saveTerms, sendExtension, confirmPayment, saveContractProgress, deleteRental } from '../../actions.js';
+import { saveContactAndSend, saveTerms, sendExtension, confirmPayment, saveContractProgress, deleteRental, setLocation } from '../../actions.js';
 import DeleteButton from '../../DeleteButton.js';
 import { StatusPill } from '../../ui.js';
 import CopyButton from '../../CopyButton.js';
 import { emailConfigured } from '../../../lib/email.js';
-import { TERM_LABELS, money, prettyDate, addMonths, dueAtSigning } from '../../../lib/format.js';
+import { TERM_LABELS, money, prettyDate, addMonths, dueAtSigning, LOCATIONS } from '../../../lib/format.js';
 import { requireAuth } from '../../auth.js';
 
 export const dynamic = 'force-dynamic';
@@ -48,6 +48,25 @@ export default async function AdminFile({ params, searchParams }) {
       <p><Link href="/">← Dashboard</Link></p>
       <h1>{c?.name || 'New rental'} <StatusPill status={r.status} /></h1>
       {banner}
+
+      {/* 0. Yard location */}
+      <div className="card">
+        <h2>Location</h2>
+        <form action={setLocation}>
+          <input type="hidden" name="id" value={r.id} />
+          <div className="row">
+            <div><label>Yard</label>
+              <select name="location" defaultValue={r.location || ''}>
+                <option value="">Unassigned</option>
+                {LOCATIONS.map((l) => <option key={l.key} value={l.key}>{l.label}</option>)}
+              </select>
+            </div>
+            <div><label>Spot #</label><input type="text" name="spot" defaultValue={r.spot || ''} placeholder="e.g. E-04" /></div>
+          </div>
+          <p className="muted" style={{ marginTop: 6 }}>Internal only. This never appears on the customer&apos;s contract.</p>
+          <div className="actions"><button className="btn alt">Save location</button></div>
+        </form>
+      </div>
 
       {/* 1. Send the intake link */}
       <div className="card">

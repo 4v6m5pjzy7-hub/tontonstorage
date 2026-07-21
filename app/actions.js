@@ -196,6 +196,87 @@ export async function saveContractProgress(formData) {
   redirect(`/admin/${id}?saved=1`);
 }
 
+// ---- Provider: tag a rental with its yard location + spot ----
+export async function setLocation(formData) {
+  requireAuth();
+  const sb = getSupabase();
+  const id = formData.get('id');
+  await sb
+    .from('rentals')
+    .update({ location: formData.get('location') || null, spot: formData.get('spot') || null })
+    .eq('id', id);
+  revalidatePath(`/admin/${id}`);
+  redirect(`/admin/${id}?saved=1`);
+}
+
+// ---- Whiskey spots (Marc's own customers - profit share tracking only) ----
+export async function addWhiskey(formData) {
+  requireAuth();
+  const sb = getSupabase();
+  const { error } = await sb.from('whiskey_rentals').insert({
+    name: formData.get('name'),
+    spot: formData.get('spot') || null,
+    monthly_amount: Number(formData.get('monthly_amount')) || 0,
+    share_percent: Number(formData.get('share_percent')) || 0,
+    notes: formData.get('notes') || null,
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath('/whiskey');
+  redirect('/whiskey?added=1');
+}
+
+export async function updateWhiskey(formData) {
+  requireAuth();
+  const sb = getSupabase();
+  await sb
+    .from('whiskey_rentals')
+    .update({
+      name: formData.get('name'),
+      spot: formData.get('spot') || null,
+      monthly_amount: Number(formData.get('monthly_amount')) || 0,
+      share_percent: Number(formData.get('share_percent')) || 0,
+      active: formData.get('active') === 'on',
+    })
+    .eq('id', formData.get('id'));
+  revalidatePath('/whiskey');
+  redirect('/whiskey?saved=1');
+}
+
+export async function deleteWhiskey(formData) {
+  requireAuth();
+  const sb = getSupabase();
+  await sb.from('whiskey_rentals').delete().eq('id', formData.get('id'));
+  revalidatePath('/whiskey');
+  redirect('/whiskey?deleted=1');
+}
+
+// Tick a Whiskey spot off for a given month (or undo it).
+export async function settleWhiskeyMonth(formData) {
+  requireAuth();
+  const sb = getSupabase();
+  const id = formData.get('id');
+  const month = formData.get('month');
+  const undo = formData.get('undo') === '1';
+
+  const { data: row } = await sb.from('whiskey_rentals').select('*').eq('id', id).single();
+  if (!row) throw new Error('Whiskey spot not found');
+
+  const settled = { ...(row.settled || {}) };
+  if (undo) {
+    delete settled[month];
+  } else {
+    settled[month] = {
+      at: new Date().toISOString(),
+      amount: Number(formData.get('amount')) || 0,
+    };
+  }
+
+  await sb.from('whiskey_rentals').update({ settled }).eq('id', id);
+  revalidatePath('/whiskey');
+  revalidatePath('/');
+  redirect('/whiskey');
+}
+
 // ---- Provider: delete a rental that never went anywhere ----
 export async function deleteRental(formData) {
   requireAuth();
