@@ -83,6 +83,19 @@ th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: upp
 .tabs a:hover { border-color: var(--blue); color: var(--blue); }
 .tabs a.on { background: var(--navy); color: #fff; border-color: var(--navy); }
 .tabs a .n { opacity: .65; margin-left: 5px; font-weight: 500; }
+/* Big, obvious, easy to tap on a phone */
+.consent {
+  display: flex; gap: 14px; align-items: flex-start; margin: 22px 0 0;
+  border: 2px solid var(--line); border-radius: 12px; padding: 16px 18px;
+  background: #fff; cursor: pointer; font-weight: 500; font-size: 15px; line-height: 1.5;
+  transition: border-color .15s, background .15s;
+}
+.consent:hover { border-color: var(--blue); }
+.consent:has(input:checked) { border-color: var(--ok); background: #f3fbf6; }
+.consent input[type=checkbox] {
+  width: 28px; height: 28px; min-width: 28px; margin: 0;
+  accent-color: var(--blue); cursor: pointer;
+}
 .danger-zone { border-color: #f0c8c5; }
 .linkbox { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 .linkbox input { font-family: monospace; font-size: 13px; min-width: 240px; flex: 1; }

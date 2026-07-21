@@ -97,8 +97,8 @@ export default async function Sign({ params, searchParams }) {
           <label style={{ marginTop: 16 }}>Draw your signature *</label>
           <SignaturePad />
 
-          <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 18, fontWeight: 500 }}>
-            <input type="checkbox" name="agree" style={{ width: 'auto', marginTop: 3 }} />
+          <label className="consent">
+            <input type="checkbox" name="agree" />
             <span>
               I have read and agree to the Storage Lot Tenant Agreement above, and I intend this
               electronic signature to be the legal equivalent of my handwritten signature.
