@@ -27,6 +27,10 @@ export const TABS = [
   { key: 'paid', label: 'Paid / active' },
 ];
 
+// Shown separately from the pipeline tabs.
+export const DELETED_TAB = { key: 'deleted', label: 'Recently deleted' };
+export const RESTORE_WINDOW_DAYS = 30;
+
 export function lifecycle(r) {
   const t = r.terms || {};
   if (!r.client) return { key: 'awaiting', label: 'Awaiting info' };

@@ -443,15 +443,40 @@ export async function settleWhiskeyMonth(formData) {
   redirect('/whiskey');
 }
 
-// ---- Provider: delete a rental that never went anywhere ----
+// ---- Provider: delete a rental (soft - restorable for 30 days) ----
 export async function deleteRental(formData) {
   requireAuth();
   const sb = getSupabase();
   const id = formData.get('id');
-  const { error } = await sb.from('rentals').delete().eq('id', id);
+  const { error } = await sb
+    .from('rentals')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', id);
   if (error) throw new Error(error.message);
   revalidatePath('/');
   redirect('/?deleted=1');
+}
+
+// ---- Provider: restore a deleted rental ----
+export async function restoreRental(formData) {
+  requireAuth();
+  const sb = getSupabase();
+  const id = formData.get('id');
+  const { error } = await sb.from('rentals').update({ deleted_at: null }).eq('id', id);
+  if (error) throw new Error(error.message);
+  revalidatePath('/');
+  redirect('/?restored=1');
+}
+
+// ---- Provider: delete permanently, before the 30 days are up ----
+export async function purgeRental(formData) {
+  requireAuth();
+  const sb = getSupabase();
+  const id = formData.get('id');
+  const { error } = await sb.from('rentals').delete().eq('id', id).not('deleted_at', 'is', null);
+  if (error) throw new Error(error.message);
+  revalidatePath('/');
+  redirect('/?purged=1');
 }
 
 // ---- Provider: record payment + email the customer a confirmation ----

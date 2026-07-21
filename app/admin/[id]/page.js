@@ -137,6 +137,15 @@ export default async function AdminFile({ params, searchParams }) {
       )}
 
       {/* 3a. Contract, signing and special provisions */}
+      {c && !t.monthlyFee && (
+        <div className="card">
+          <h2>Contract &amp; signing</h2>
+          <div className="banner info">
+            Set the term &amp; rate above and press <strong>Save</strong> first. Once saved, the
+            <strong> Email for signature</strong> button and signing tools appear here.
+          </div>
+        </div>
+      )}
       {c && t.monthlyFee && (
         <div className="card">
           <h2>Contract &amp; signing</h2>
@@ -300,8 +309,9 @@ export default async function AdminFile({ params, searchParams }) {
       <div className="card danger-zone">
         <h2 style={{ color: '#b3261e' }}>Delete this rental</h2>
         <p className="muted">
-          Use this if the customer never signed or backed out. It permanently removes the record,
-          their details and their intake link. This cannot be undone.
+          Use this if the customer never signed or backed out. It moves to <strong>Recently deleted</strong>,
+          where it stays restorable for 30 days with the contract and any signatures intact, then is
+          removed automatically.
         </p>
         <form action={deleteRental} style={{ marginTop: 12 }}>
           <input type="hidden" name="id" value={r.id} />

@@ -64,6 +64,8 @@ th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: upp
 .tabs a.t-needs_countersign.on { background: #1257a5; border-color: #1257a5; color: #fff; }
 .tabs a.t-signed_unpaid { border-color: #ecd79a; color: #8a6100; }
 .tabs a.t-signed_unpaid.on { background: #8a6100; border-color: #8a6100; color: #fff; }
+.tabs a.t-deleted { border-color: #d9dee5; color: #6b7688; }
+.tabs a.t-deleted.on { background: #6b7688; border-color: #6b7688; color: #fff; }
 .tabs a.t-paid { border-color: #a9dcc0; color: #16724a; }
 .tabs a.t-paid.on { background: #16724a; border-color: #16724a; color: #fff; }
 .tabs a .n {

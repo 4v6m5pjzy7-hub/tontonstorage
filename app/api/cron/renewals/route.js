@@ -19,10 +19,20 @@ export async function GET(request) {
   if (!supabaseConfigured()) return Response.json({ error: 'not configured' }, { status: 500 });
 
   const sb = getSupabase();
+
+  // Purge rentals deleted more than 30 days ago.
+  const cutoff = new Date(Date.now() - 30 * 86400000).toISOString();
+  const { data: purged } = await sb
+    .from('rentals')
+    .delete()
+    .lt('deleted_at', cutoff)
+    .select('id');
+
   const { data: rentals = [], error } = await sb
     .from('rentals')
     .select('*')
     .eq('status', 'active')
+    .is('deleted_at', null)
     .is('renewal_notified_at', null);
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
@@ -46,5 +56,5 @@ export async function GET(request) {
     }
   }
 
-  return Response.json({ checked: rentals.length, notified });
+  return Response.json({ checked: rentals.length, notified, purged: purged?.length || 0 });
 }

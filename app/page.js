@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { getSupabase, supabaseConfigured } from '../lib/supabase.js';
-import { createIntake, logout } from './actions.js';
+import { createIntake, logout, restoreRental, purgeRental } from './actions.js';
 import { requireAuth } from './auth.js';
-import { LifecyclePill, RenewalPill, lifecycle, TABS } from './ui.js';
+import { LifecyclePill, RenewalPill, lifecycle, TABS, DELETED_TAB, RESTORE_WINDOW_DAYS } from './ui.js';
+import PurgeButton from './PurgeButton.js';
 import { TERM_LABELS, money, prettyDate, daysUntil, LOCATIONS, locationLabel, monthKey, monthLabel, shareAmount } from '../lib/format.js';
 
 export const dynamic = 'force-dynamic';
@@ -28,11 +29,17 @@ export default async function Dashboard({ searchParams }) {
   const tab = searchParams?.tab || 'all';
   const loc = searchParams?.loc || 'all';
 
+  // Deleted rentals are held separately for 30 days, not in the pipeline.
+  const live = rentals.filter((r) => !r.deleted_at);
+  const deleted = rentals
+    .filter((r) => r.deleted_at)
+    .sort((a, b) => new Date(b.deleted_at) - new Date(a.deleted_at));
+
   // Location filter applies first so the stage counts reflect the chosen yard.
   const inLoc =
-    loc === 'all' ? rentals
-    : loc === 'none' ? rentals.filter((r) => !r.location)
-    : rentals.filter((r) => r.location === loc);
+    loc === 'all' ? live
+    : loc === 'none' ? live.filter((r) => !r.location)
+    : live.filter((r) => r.location === loc);
   const counts = {};
   for (const r of inLoc) {
     const k = lifecycle(r).key;
@@ -40,9 +47,9 @@ export default async function Dashboard({ searchParams }) {
   }
   counts.all = inLoc.length;
 
-  const locCounts = { all: rentals.length };
-  for (const l of LOCATIONS) locCounts[l.key] = rentals.filter((r) => r.location === l.key).length;
-  locCounts.none = rentals.filter((r) => !r.location).length;
+  const locCounts = { all: live.length };
+  for (const l of LOCATIONS) locCounts[l.key] = live.filter((r) => r.location === l.key).length;
+  locCounts.none = live.filter((r) => !r.location).length;
 
   const shown = tab === 'all' ? inLoc : inLoc.filter((r) => lifecycle(r).key === tab);
   const qs = (over) => {
@@ -110,8 +117,57 @@ export default async function Dashboard({ searchParams }) {
             {t.label}<span className="n">{counts[t.key] || 0}</span>
           </Link>
         ))}
+        {deleted.length > 0 && (
+          <Link href="/?tab=deleted" className={`t-deleted${tab === 'deleted' ? ' on' : ''}`}>
+            {DELETED_TAB.label}<span className="n">{deleted.length}</span>
+          </Link>
+        )}
       </div>
 
+      {tab === 'deleted' && (
+        <div className="card">
+          <h2>Recently deleted</h2>
+          <p className="muted">
+            Deleted rentals are kept for {RESTORE_WINDOW_DAYS} days with their contracts and signatures
+            intact, then removed automatically. Restore one any time before that.
+          </p>
+          {deleted.length === 0 ? (
+            <div className="empty">Nothing deleted recently.</div>
+          ) : (
+            <table>
+              <thead><tr><th>Client</th><th>Deleted</th><th>Auto-removes in</th><th></th></tr></thead>
+              <tbody>
+                {deleted.map((r) => {
+                  const gone = Math.max(0, RESTORE_WINDOW_DAYS - Math.floor((Date.now() - new Date(r.deleted_at)) / 86400000));
+                  return (
+                    <tr key={r.id}>
+                      <td>
+                        <strong>{r.client?.name || '(no client info)'}</strong>
+                        {r.terms?.signature?.signedAt && <span className="muted"> · signed copy kept</span>}
+                        <br /><span className="muted">{r.terms?.monthlyFee ? `${money(r.terms.monthlyFee)}/mo` : '—'}</span>
+                      </td>
+                      <td>{new Date(r.deleted_at).toLocaleDateString('en-US')}</td>
+                      <td>{gone} day{gone === 1 ? '' : 's'}</td>
+                      <td style={{ display: 'flex', gap: 8 }}>
+                        <form action={restoreRental}>
+                          <input type="hidden" name="id" value={r.id} />
+                          <button className="btn blue" style={{ padding: '6px 14px', fontSize: 13 }}>Restore</button>
+                        </form>
+                        <form action={purgeRental}>
+                          <input type="hidden" name="id" value={r.id} />
+                          <PurgeButton name={r.client?.name || ''} />
+                        </form>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {tab !== 'deleted' && (
       <div className="card">
         {shown.length === 0 ? (
           <div className="empty">
@@ -148,6 +204,7 @@ export default async function Dashboard({ searchParams }) {
           </table>
         )}
       </div>
+      )}
     </div>
   );
 }

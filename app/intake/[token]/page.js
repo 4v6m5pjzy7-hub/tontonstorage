@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export default async function Intake({ params }) {
   if (!supabaseConfigured()) notFound();
   const sb = getSupabase();
-  const { data: r } = await sb.from('rentals').select('*').eq('token', params.token).single();
+  const { data: r } = await sb.from('rentals').select('*').eq('token', params.token).is('deleted_at', null).single();
   if (!r) {
     return (
       <div className="wrap"><div className="card">

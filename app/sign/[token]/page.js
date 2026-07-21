@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export default async function Sign({ params, searchParams }) {
   if (!supabaseConfigured()) return null;
   const sb = getSupabase();
-  const { data: r } = await sb.from('rentals').select('*').eq('token', params.token).single();
+  const { data: r } = await sb.from('rentals').select('*').eq('token', params.token).is('deleted_at', null).single();
 
   if (!r) {
     return (

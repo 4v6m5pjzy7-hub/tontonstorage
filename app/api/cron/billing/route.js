@@ -18,7 +18,7 @@ export async function GET(request) {
   if (!supabaseConfigured()) return Response.json({ error: 'not configured' }, { status: 500 });
 
   const sb = getSupabase();
-  const { data: rentals = [], error } = await sb.from('rentals').select('*');
+  const { data: rentals = [], error } = await sb.from('rentals').select('*').is('deleted_at', null);
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
   // ?dry=1 reports who would be billed without sending anything.
