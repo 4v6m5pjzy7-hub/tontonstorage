@@ -194,7 +194,9 @@ export default async function Dashboard({ searchParams }) {
                       <br /><span className="muted">Added {new Date(r.created_at).toLocaleDateString('en-US')}</span>
                     </td>
                     <td data-label="Location">{r.location ? <span>{locationLabel(r.location)}{r.spot ? <span className="muted"> · {r.spot}</span> : null}</span> : <span className="muted">—</span>}</td>
-                    <td data-label="Stage"><span><LifecyclePill rental={r} /><RenewalPill status={r.status} /></span></td>
+                    <td data-label="Stage" className="cell-stage">
+                      <span className="pills"><LifecyclePill rental={r} /><RenewalPill status={r.status} /></span>
+                    </td>
                     <td data-label="Term"><span>{TERM_LABELS[r.terms?.termType] || '—'}</span></td>
                     <td data-label="Rate"><span>{r.terms?.monthlyFee ? `${money(r.terms.monthlyFee)}/mo` : '—'}</span></td>
                     <td data-label="Ends"><span>{end ? <>{prettyDate(end)}{dleft !== null && dleft >= 0 && dleft <= 45 && <span className="muted"> ({dleft}d)</span>}</> : '—'}</span></td>

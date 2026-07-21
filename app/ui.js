@@ -54,5 +54,5 @@ export function LifecyclePill({ rental }) {
 const RENEWAL_STATES = ['renewal_notified', 'extend_requested', 'vacating', 'renewed'];
 export function RenewalPill({ status }) {
   if (!RENEWAL_STATES.includes(status)) return null;
-  return <span className={`pill ${status}`} style={{ marginLeft: 6 }}>{STATUS_LABEL[status]}</span>;
+  return <span className={`pill ${status}`}>{STATUS_LABEL[status]}</span>;
 }

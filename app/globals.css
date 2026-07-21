@@ -120,11 +120,16 @@ input:focus, select:focus, textarea:focus {
 .btn[disabled] { opacity: .6; cursor: not-allowed; }
 
 /* ---------- Tabs / filters ---------- */
+/* Wrap onto a second row where there's room; scroll as one strip on phones.
+   Never clip a tab off the right edge. */
 .tabs {
   display: flex; gap: 7px; margin-bottom: 12px; align-items: center;
-  overflow-x: auto; padding-bottom: 4px; scrollbar-width: none;
+  flex-wrap: wrap; padding-bottom: 4px; scrollbar-width: none;
 }
 .tabs::-webkit-scrollbar { display: none; }
+@media (max-width: 720px) {
+  .tabs { flex-wrap: nowrap; overflow-x: auto; }
+}
 .tabs a {
   padding: 7px 13px; border-radius: 999px; font-size: 13px; font-weight: 600;
   text-decoration: none; color: var(--muted); background: #fff;
@@ -152,10 +157,17 @@ input:focus, select:focus, textarea:focus {
 .tabs a.t-deleted.on { background: var(--muted); border-color: var(--muted); color: #fff; }
 
 /* ---------- Pills ---------- */
+/* Badges must never be clipped. They keep words intact but may wrap onto
+   a second line when the column is tight. */
 .pill {
   display: inline-block; padding: 3px 10px; border-radius: 999px;
-  font-size: 12px; font-weight: 600; white-space: nowrap;
+  font-size: 12px; font-weight: 600; line-height: 1.45;
+  white-space: normal; overflow-wrap: break-word; max-width: 100%;
 }
+/* A stage cell can hold several badges (lifecycle + renewal). */
+.pills { display: flex; flex-wrap: wrap; gap: 5px; align-items: flex-start; }
+/* Stop the stage column collapsing so narrow the badge has nowhere to go. */
+.cell-stage { min-width: 148px; }
 .pill.lc-awaiting { background: #eef1f5; color: #5b6675; }
 .pill.lc-to_price { background: var(--blue-soft); color: #1a56b0; }
 .pill.lc-to_send { background: #ede4ff; color: #6b3fc9; }
@@ -199,6 +211,9 @@ tbody tr:hover { background: #fafbfd; }
   }
   table.responsive td[data-label=""]::before { content: none; }
   table.responsive td > * { text-align: right; }
+  /* Badges align right but still wrap rather than clip on a narrow phone. */
+  table.responsive .pills { justify-content: flex-end; }
+  table.responsive .cell-stage { min-width: 0; }
   table.responsive td:first-child { display: block; padding: 0 0 8px; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
   table.responsive td:first-child::before { content: none; }
   table.responsive td:first-child > * { text-align: left; }
