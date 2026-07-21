@@ -1,9 +1,11 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getSupabase, supabaseConfigured } from '../../../lib/supabase.js';
-import { saveContactAndSend, saveTerms, sendExtension, confirmPayment, saveContractProgress, deleteRental, setLocation, sendSignRequest } from '../../actions.js';
+import { saveContactAndSend, saveTerms, sendExtension, confirmPayment, saveContractProgress, deleteRental, setLocation, sendSignRequest, providerSign } from '../../actions.js';
 import DeleteButton from '../../DeleteButton.js';
 import SubmitButton from '../../SubmitButton.js';
+import TermCalculator from '../../TermCalculator.js';
+import SignaturePad from '../../SignaturePad.js';
 import { StatusPill } from '../../ui.js';
 import CopyButton from '../../CopyButton.js';
 import { emailConfigured } from '../../../lib/email.js';
@@ -36,6 +38,8 @@ export default async function AdminFile({ params, searchParams }) {
     searchParams?.paid === '1' ? <div className="banner ok">Payment recorded and confirmation emailed to the customer.</div> :
     searchParams?.saved === '1' ? <div className="banner ok">Contract status saved.</div> :
     searchParams?.sent_sign === '1' ? <div className="banner ok">Signing link emailed to the customer.</div> :
+    searchParams?.executed === '1' ? <div className="banner ok">Agreement fully executed. Executed copy emailed to the customer.</div> :
+    searchParams?.added === '1' ? <div className="banner ok">Customer added. Review the details below.</div> :
     null;
 
   const types = [];
@@ -120,81 +124,15 @@ export default async function AdminFile({ params, searchParams }) {
       {c && (
         <div className="card">
           <h2>3 · Set term &amp; rate</h2>
-          <form action={saveTerms}>
-            <input type="hidden" name="id" value={r.id} />
-            <div className="row">
-              <div><label>Term type</label>
-                <select name="termType" defaultValue={t.termType || ''} required>
-                  <option value="">Select…</option>
-                  <option value="month-to-month">Month-to-month</option>
-                  <option value="fixed-3">Fixed - 3 month</option>
-                  <option value="fixed-6">Fixed - 6 month</option>
-                  <option value="fixed-12">Fixed - 12 month</option>
-                </select>
-              </div>
-              <div><label>Monthly storage fee ($)</label>
-                <input type="number" name="monthlyFee" min="0" step="1" defaultValue={t.monthlyFee || ''} required /></div>
-            </div>
-            <div className="row">
-              <div><label>Payment schedule</label>
-                <select name="paymentSchedule" defaultValue={t.paymentSchedule || 'monthly'}>
-                  <option value="monthly">Monthly</option>
-                  <option value="prepaid">Prepaid</option>
-                </select></div>
-              <div><label>Payment method</label>
-                <select name="paymentMethod" defaultValue={t.paymentMethod || 'cash'}>
-                  <option value="cash">Cash</option>
-                  <option value="zelle">Zelle</option>
-                  <option value="card">Card (+3%)</option>
-                </select></div>
-            </div>
-            <div className="row">
-              <div><label>Agreement date</label><input type="date" name="agreementDate" defaultValue={t.agreementDate || ''} /></div>
-              <div><label>Start date</label><input type="date" name="startDate" defaultValue={t.startDate || ''} /></div>
-            </div>
-            <fieldset className="fieldset" style={{ marginTop: 16 }}>
-              <legend>Prorate &amp; one-time payment</legend>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
-                <input type="checkbox" name="prorate" defaultChecked={!!t.prorate} style={{ width: 'auto' }} />
-                Prorate the first partial month
-              </label>
-              <p className="muted" style={{ margin: '4px 0 0' }}>
-                Bills the signing day through the end of that month, then the term starts the 1st of the next month.
-              </p>
-              <div className="row" style={{ marginTop: 10 }}>
-                <div><label>One-time payment ($)</label>
-                  <input type="number" name="oneTimeAmount" min="0" step="0.01" defaultValue={t.oneTimeAmount || ''} placeholder="optional" /></div>
-                <div><label>What is it for?</label>
-                  <input type="text" name="oneTimeLabel" defaultValue={t.oneTimeLabel || ''} placeholder="e.g. Deposit, setup fee, prepaid term" /></div>
-              </div>
-            </fieldset>
-
-            {t.monthlyFee && (
-              <div style={{ marginTop: 14, background: '#f2f5fa', borderRadius: 10, padding: '14px 16px' }}>
-                <div style={{ fontWeight: 700, color: 'var(--navy)', marginBottom: 8 }}>Due at signing</div>
-                <dl className="kv" style={{ gridTemplateColumns: '1fr auto', gap: '4px 14px' }}>
-                  {t.proration && (<><dt>Prorated {prettyDate(t.proration.from)} – {prettyDate(t.proration.to)} ({t.proration.days} days)</dt><dd>{money(due.prorated)}</dd></>)}
-                  <dt>First month</dt><dd>{money(due.firstMonth)}</dd>
-                  <dt>Last month (held)</dt><dd>{money(due.lastMonth)}</dd>
-                  {due.oneTime > 0 && (<><dt>{due.oneTimeLabel}</dt><dd>{money(due.oneTime)}</dd></>)}
-                  <dt style={{ fontWeight: 800, color: 'var(--navy)', borderTop: '1px solid #d8dfe8', paddingTop: 6 }}>Total</dt>
-                  <dd style={{ fontWeight: 800, color: 'var(--navy)', borderTop: '1px solid #d8dfe8', paddingTop: 6 }}>{money(due.total)}</dd>
-                </dl>
-                {t.termStart && t.endDate && (
-                  <p className="muted" style={{ marginTop: 10 }}>
-                    Term runs <strong>{prettyDate(t.termStart)}</strong> to <strong>{prettyDate(t.endDate)}</strong>. Renewal notice fires 30 days before.
-                  </p>
-                )}
-                {!t.termStart && t.endDate && (
-                  <p className="muted" style={{ marginTop: 10 }}>Term end: <strong>{prettyDate(t.endDate)}</strong>. Renewal notice fires 30 days before.</p>
-                )}
-              </div>
-            )}
-            <div className="actions">
-              <button className="btn">Save</button>
-              <a className="btn blue" href={`/contract/${r.id}`} target="_blank" rel="noreferrer">Generate contract →</a>
-            </div>
-          </form>
+          <TermCalculator rentalId={r.id} terms={t} contractHref={`/contract/${r.id}`} action={saveTerms} />
+          {t.termStart && t.endDate && (
+            <p className="muted" style={{ marginTop: 10 }}>
+              Saved term runs <strong>{prettyDate(t.termStart)}</strong> to <strong>{prettyDate(t.endDate)}</strong>. Renewal notice fires 30 days before.
+            </p>
+          )}
+          {!t.termStart && t.endDate && (
+            <p className="muted" style={{ marginTop: 10 }}>Saved term end: <strong>{prettyDate(t.endDate)}</strong>. Renewal notice fires 30 days before.</p>
+          )}
         </div>
       )}
 
@@ -233,10 +171,40 @@ export default async function AdminFile({ params, searchParams }) {
           <hr style={{ border: 0, borderTop: '1px solid var(--line)', margin: '20px 0' }} />
 
           {t.signature?.signedAt ? (
-            <div className="banner ok">
-              Signed electronically by <strong>{t.signature.name}</strong> on {prettyDate(t.signedAt)}
-              {t.signature.ip ? ` (IP ${t.signature.ip})` : ''}. Signature is on the contract.
-            </div>
+            <>
+              <div className="banner ok">
+                Signed electronically by <strong>{t.signature.name}</strong> on {prettyDate(t.signedAt)}
+                {t.signature.ip ? ` (IP ${t.signature.ip})` : ''}.
+              </div>
+
+              {t.providerSignature?.signedAt ? (
+                <div className="banner ok">
+                  Countersigned by <strong>{t.providerSignature.name}</strong> on {prettyDate(t.executedAt)}.
+                  Fully executed — the executed copy was emailed to {c.email}.
+                </div>
+              ) : (
+                <div style={{ border: '2px solid var(--blue)', borderRadius: 10, padding: 16, marginTop: 4 }}>
+                  <h3 style={{ margin: '0 0 6px', color: 'var(--navy)', fontSize: 16 }}>Your turn to sign</h3>
+                  <p className="muted" style={{ marginTop: 0 }}>
+                    The customer has signed. Countersign below to fully execute it — the executed copy
+                    is emailed to them automatically.
+                  </p>
+                  {searchParams?.e === 'sig' && <div className="banner err">Please draw a signature first.</div>}
+                  <form action={providerSign}>
+                    <input type="hidden" name="id" value={r.id} />
+                    <label>Signing as</label>
+                    <input type="text" name="signerName" defaultValue="Anton Bajada Leonardes" />
+                    <label style={{ marginTop: 14 }}>Signature</label>
+                    <SignaturePad />
+                    <div className="actions">
+                      <SubmitButton className="btn blue" pendingText="Executing…">
+                        Countersign &amp; send executed copy →
+                      </SubmitButton>
+                    </div>
+                  </form>
+                </div>
+              )}
+            </>
           ) : (
             <>
               <p className="muted" style={{ marginBottom: 10 }}>

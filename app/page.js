@@ -73,8 +73,10 @@ export default async function Dashboard({ searchParams }) {
           <h1>Rentals</h1>
           <p className="lead" style={{ margin: 0 }}>Send a link, collect info, set the term &amp; rate, then let auto-renewals run.</p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <form action={createIntake}><button className="btn blue">+ New intake link</button></form>
+          <Link className="btn alt" href="/add">+ Add existing customer</Link>
+          <Link className="btn alt" href="/whiskey">Whiskey / Marc</Link>
           <form action={logout}><button className="btn ghost">Log out</button></form>
         </div>
       </div>
@@ -104,7 +106,7 @@ export default async function Dashboard({ searchParams }) {
 
       <div className="tabs">
         {TABS.map((t) => (
-          <Link key={t.key} href={qs({ tab: t.key })} className={tab === t.key ? 'on' : ''}>
+          <Link key={t.key} href={qs({ tab: t.key })} className={`t-${t.key}${tab === t.key ? ' on' : ''}`}>
             {t.label}<span className="n">{counts[t.key] || 0}</span>
           </Link>
         ))}

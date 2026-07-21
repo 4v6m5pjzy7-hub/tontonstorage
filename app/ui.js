@@ -22,6 +22,7 @@ export const TABS = [
   { key: 'to_price', label: 'To price' },
   { key: 'to_send', label: 'Ready to send' },
   { key: 'sent_unsigned', label: 'Sent, not signed' },
+  { key: 'needs_countersign', label: 'Needs Anton’s signature' },
   { key: 'signed_unpaid', label: 'Signed, not paid' },
   { key: 'paid', label: 'Paid / active' },
 ];
@@ -31,6 +32,10 @@ export function lifecycle(r) {
   if (!r.client) return { key: 'awaiting', label: 'Awaiting info' };
   if (!t.monthlyFee) return { key: 'to_price', label: 'Needs term & rate' };
   if (t.payment?.paidAt) return { key: 'paid', label: 'Paid / active' };
+  // Customer has signed but Anton hasn't countersigned yet.
+  if (t.signature?.signedAt && !t.providerSignature?.signedAt) {
+    return { key: 'needs_countersign', label: 'Needs Anton’s signature' };
+  }
   if (t.signedAt) return { key: 'signed_unpaid', label: 'Signed, not paid' };
   if (t.contractSentAt) return { key: 'sent_unsigned', label: 'Sent, not signed' };
   return { key: 'to_send', label: 'Ready to send' };

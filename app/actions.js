@@ -21,6 +21,7 @@ import {
   sendPaymentConfirmation,
   sendSignatureRequest,
   sendSignedCopy,
+  sendExecutedCopy,
 } from '../lib/email.js';
 
 function token(n = 9) {
@@ -142,6 +143,11 @@ export async function saveTerms(formData) {
   let endDate = null;
   if (prorate && startDate) {
     proration = prorateFirstMonth(monthlyFee, startDate);
+    // Provider can hand-edit the prorated figure; keep their number.
+    const override = formData.get('proratedOverride');
+    if (override !== null && override !== '' && !Number.isNaN(Number(override))) {
+      proration = { ...proration, amount: Number(override), overridden: Number(override) !== proration.amount };
+    }
     termStart = firstOfNextMonth(startDate);
     endDate = months ? lastDayAfterMonths(termStart, months) : null;
   } else {
@@ -257,6 +263,103 @@ export async function signContract(formData) {
   }
 
   redirect(`/sign/${tok}`);
+}
+
+// ---- Provider: add an existing customer straight in (no intake link) ----
+export async function addExistingRental(formData) {
+  requireAuth();
+  const sb = getSupabase();
+
+  const termType = formData.get('termType') || 'month-to-month';
+  const startDate = formData.get('startDate') || null;
+  const monthlyFee = formData.get('monthlyFee');
+  const months = TERM_MONTHS[termType];
+  const endDate = months && startDate ? addMonths(startDate, months) : null;
+
+  const rental = {
+    token: token(),
+    renew_token: token(),
+    status: 'active',
+    location: formData.get('location') || null,
+    spot: formData.get('spot') || null,
+    submitted_at: new Date().toISOString(),
+    finalized_at: new Date().toISOString(),
+    client: {
+      name: formData.get('name'),
+      phone: formData.get('phone') || '',
+      email: formData.get('email') || '',
+      property: {
+        boat: '0', trailer: '0', rv: '0', vehicle: '0', other: '',
+        makeModel: formData.get('makeModel') || '',
+        length: formData.get('length') || '',
+        licenseReg: formData.get('licenseReg') || '',
+        insurance: formData.get('insurance') || '',
+      },
+    },
+    terms: {
+      termType,
+      monthlyFee,
+      paymentSchedule: formData.get('paymentSchedule') || 'monthly',
+      paymentMethod: formData.get('paymentMethod') || 'cash',
+      agreementDate: startDate,
+      startDate,
+      termStart: startDate,
+      endDate,
+      prorate: false,
+      proration: null,
+      oneTimeAmount: '',
+      oneTimeLabel: '',
+      // Existing customers are already signed and paying on paper.
+      contractSentAt: formData.get('alreadySigned') === 'on' ? startDate : null,
+      signedAt: formData.get('alreadySigned') === 'on' ? startDate : null,
+      backfilled: true,
+    },
+  };
+
+  const { data, error } = await sb.from('rentals').insert(rental).select('id').single();
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/');
+  redirect(`/admin/${data.id}?added=1`);
+}
+
+// ---- Provider: counter-sign, which fully executes the agreement ----
+export async function providerSign(formData) {
+  requireAuth();
+  const sb = getSupabase();
+  const id = formData.get('id');
+  const signerName = (formData.get('signerName') || '').trim() || 'Anton Bajada Leonardes';
+  const signatureData = formData.get('signatureData') || '';
+
+  if (!signatureData.startsWith('data:image')) redirect(`/admin/${id}?e=sig`);
+
+  const { data: rental } = await sb.from('rentals').select('*').eq('id', id).single();
+  if (!rental) throw new Error('Rental not found');
+
+  const now = new Date();
+  const h = headers();
+  const terms = {
+    ...(rental.terms || {}),
+    executedAt: now.toISOString().slice(0, 10),
+    providerSignature: {
+      name: signerName,
+      title: 'Owner / Managing Member',
+      dataUrl: signatureData,
+      signedAt: now.toISOString(),
+      ip: h.get('x-forwarded-for')?.split(',')[0]?.trim() || null,
+    },
+  };
+
+  await sb.from('rentals').update({ terms }).eq('id', id);
+
+  try {
+    await sendExecutedCopy({ ...rental, terms });
+  } catch (e) {
+    console.error('executed-copy email failed:', e);
+  }
+
+  revalidatePath(`/admin/${id}`);
+  redirect(`/admin/${id}?executed=1`);
 }
 
 // ---- Provider: tag a rental with its yard location + spot ----

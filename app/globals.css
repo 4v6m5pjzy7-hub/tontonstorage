@@ -48,12 +48,29 @@ th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: upp
 .pill.vacating { background: #fde5e8; color: #b3261e; }
 .pill.renewed { background: #e5f5ec; color: var(--ok); }
 .pill.expired { background: #eceff3; color: #6b7688; }
-.pill.lc-awaiting { background: #fdf3e3; color: var(--warn); }
+.pill.lc-awaiting { background: #eceff3; color: #6b7688; }
 .pill.lc-to_price { background: #e4f0ff; color: #2166c9; }
 .pill.lc-to_send { background: #ede4ff; color: #6b3fc9; }
-.pill.lc-sent_unsigned { background: #fff2d8; color: #a9741a; }
-.pill.lc-signed_unpaid { background: #ffe9e0; color: #c2551e; }
-.pill.lc-paid { background: #e5f5ec; color: var(--ok); }
+/* Ken's colour scheme: chasing a signature = red, chasing money = amber, done = green */
+.pill.lc-sent_unsigned { background: #fdE3E1; color: #b3261e; }
+.pill.lc-needs_countersign { background: #e2f0ff; color: #1257a5; }
+.pill.lc-signed_unpaid { background: #fdf0cf; color: #8a6100; }
+.pill.lc-paid { background: #e0f4e8; color: #16724a; }
+
+/* Same colour language on the filter tabs so the pipeline reads at a glance */
+.tabs a.t-sent_unsigned { border-color: #f3c9c5; color: #b3261e; }
+.tabs a.t-sent_unsigned.on { background: #b3261e; border-color: #b3261e; color: #fff; }
+.tabs a.t-needs_countersign { border-color: #bcd8f7; color: #1257a5; }
+.tabs a.t-needs_countersign.on { background: #1257a5; border-color: #1257a5; color: #fff; }
+.tabs a.t-signed_unpaid { border-color: #ecd79a; color: #8a6100; }
+.tabs a.t-signed_unpaid.on { background: #8a6100; border-color: #8a6100; color: #fff; }
+.tabs a.t-paid { border-color: #a9dcc0; color: #16724a; }
+.tabs a.t-paid.on { background: #16724a; border-color: #16724a; color: #fff; }
+.tabs a .n {
+  display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 6px;
+  border-radius: 9px; background: rgba(0,0,0,.07); font-weight: 700; font-size: 11.5px; text-align: center;
+}
+.tabs a.on .n { background: rgba(255,255,255,.25); }
 .btn.danger { background: #b3261e; color: #fff; }
 .btn.danger:hover { background: #8f1e17; }
 .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
