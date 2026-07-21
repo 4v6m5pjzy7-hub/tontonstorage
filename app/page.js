@@ -75,14 +75,14 @@ export default async function Dashboard({ searchParams }) {
 
   return (
     <div className="wrap">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <div>
+      <div className="pagehead">
+        <div className="titles">
           <h1>Rentals</h1>
           <p className="lead" style={{ margin: 0 }}>Send a link, collect info, set the term &amp; rate, then let auto-renewals run.</p>
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div className="acts">
           <form action={createIntake}><button className="btn blue">+ New intake link</button></form>
-          <Link className="btn alt" href="/add">+ Add existing customer</Link>
+          <Link className="btn alt" href="/add">+ Add existing</Link>
           <Link className="btn alt" href="/whiskey">Whiskey / Marc</Link>
           <form action={logout}><button className="btn ghost">Log out</button></form>
         </div>
@@ -99,8 +99,8 @@ export default async function Dashboard({ searchParams }) {
         </div>
       )}
 
-      <div className="tabs" style={{ marginBottom: 8 }}>
-        <span className="muted" style={{ alignSelf: 'center', marginRight: 4 }}>Location:</span>
+      <div className="tabs">
+        <span className="lbl">Location</span>
         <Link href={qs({ loc: 'all' })} className={loc === 'all' ? 'on' : ''}>All<span className="n">{locCounts.all}</span></Link>
         {LOCATIONS.map((l) => (
           <Link key={l.key} href={qs({ loc: l.key })} className={loc === l.key ? 'on' : ''}>
@@ -108,7 +108,6 @@ export default async function Dashboard({ searchParams }) {
           </Link>
         ))}
         <Link href={qs({ loc: 'none' })} className={loc === 'none' ? 'on' : ''}>Unassigned<span className="n">{locCounts.none}</span></Link>
-        <Link href="/whiskey" style={{ marginLeft: 'auto' }}>Whiskey profit share →</Link>
       </div>
 
       <div className="tabs">
@@ -134,21 +133,22 @@ export default async function Dashboard({ searchParams }) {
           {deleted.length === 0 ? (
             <div className="empty">Nothing deleted recently.</div>
           ) : (
-            <table>
+            <div className="table-wrap">
+            <table className="responsive">
               <thead><tr><th>Client</th><th>Deleted</th><th>Auto-removes in</th><th></th></tr></thead>
               <tbody>
                 {deleted.map((r) => {
                   const gone = Math.max(0, RESTORE_WINDOW_DAYS - Math.floor((Date.now() - new Date(r.deleted_at)) / 86400000));
                   return (
                     <tr key={r.id}>
-                      <td>
+                      <td data-label="">
                         <strong>{r.client?.name || '(no client info)'}</strong>
                         {r.terms?.signature?.signedAt && <span className="muted"> · signed copy kept</span>}
                         <br /><span className="muted">{r.terms?.monthlyFee ? `${money(r.terms.monthlyFee)}/mo` : '—'}</span>
                       </td>
-                      <td>{new Date(r.deleted_at).toLocaleDateString('en-US')}</td>
-                      <td>{`${gone} day${gone === 1 ? '' : 's'}`}</td>
-                      <td style={{ display: 'flex', gap: 8 }}>
+                      <td data-label="Deleted"><span>{new Date(r.deleted_at).toLocaleDateString('en-US')}</span></td>
+                      <td data-label="Auto-removes in"><span>{`${gone} day${gone === 1 ? '' : 's'}`}</span></td>
+                      <td data-label="" style={{ display: 'flex', gap: 8 }}>
                         <form action={restoreRental}>
                           <input type="hidden" name="id" value={r.id} />
                           <button className="btn blue" style={{ padding: '6px 14px', fontSize: 13 }}>Restore</button>
@@ -163,6 +163,7 @@ export default async function Dashboard({ searchParams }) {
                 })}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       )}
@@ -176,7 +177,8 @@ export default async function Dashboard({ searchParams }) {
               : 'Nothing in this stage right now.'}
           </div>
         ) : (
-          <table>
+          <div className="table-wrap">
+          <table className="responsive">
             <thead>
               <tr><th>Client</th><th>Location</th><th>Stage</th><th>Term</th><th>Rate</th><th>Ends</th><th></th></tr>
             </thead>
@@ -187,21 +189,22 @@ export default async function Dashboard({ searchParams }) {
                 const dleft = end ? daysUntil(end) : null;
                 return (
                   <tr key={r.id}>
-                    <td>
+                    <td data-label="">
                       <Link href={`/admin/${r.id}`}><strong>{name}</strong></Link>
-                      <br /><span className="muted">{new Date(r.created_at).toLocaleDateString('en-US')}</span>
+                      <br /><span className="muted">Added {new Date(r.created_at).toLocaleDateString('en-US')}</span>
                     </td>
-                    <td>{r.location ? <>{locationLabel(r.location)}{r.spot ? <span className="muted"> · {r.spot}</span> : null}</> : <span className="muted">—</span>}</td>
-                    <td><LifecyclePill rental={r} /><RenewalPill status={r.status} /></td>
-                    <td>{TERM_LABELS[r.terms?.termType] || '—'}</td>
-                    <td>{r.terms?.monthlyFee ? `${money(r.terms.monthlyFee)}/mo` : '—'}</td>
-                    <td>{end ? <>{prettyDate(end)}{dleft !== null && dleft >= 0 && dleft <= 45 && <span className="muted"> ({dleft}d)</span>}</> : '—'}</td>
-                    <td><Link href={`/admin/${r.id}`}>Open →</Link></td>
+                    <td data-label="Location">{r.location ? <span>{locationLabel(r.location)}{r.spot ? <span className="muted"> · {r.spot}</span> : null}</span> : <span className="muted">—</span>}</td>
+                    <td data-label="Stage"><span><LifecyclePill rental={r} /><RenewalPill status={r.status} /></span></td>
+                    <td data-label="Term"><span>{TERM_LABELS[r.terms?.termType] || '—'}</span></td>
+                    <td data-label="Rate"><span>{r.terms?.monthlyFee ? `${money(r.terms.monthlyFee)}/mo` : '—'}</span></td>
+                    <td data-label="Ends"><span>{end ? <>{prettyDate(end)}{dleft !== null && dleft >= 0 && dleft <= 45 && <span className="muted"> ({dleft}d)</span>}</> : '—'}</span></td>
+                    <td data-label=""><Link className="btn alt" style={{ padding: '7px 14px', fontSize: 13 }} href={`/admin/${r.id}`}>Open →</Link></td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
       )}

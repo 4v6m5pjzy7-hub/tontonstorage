@@ -58,17 +58,18 @@ export default async function Whiskey({ searchParams }) {
             <div className="banner info">
               <strong>{money(owed)}</strong> outstanding across {outstanding.length} spot{outstanding.length === 1 ? '' : 's'}.
             </div>
-            <table>
+            <div className="table-wrap">
+            <table className="responsive">
               <thead><tr><th>Customer</th><th>Spot</th><th>Monthly</th><th>Share</th><th>Owed</th><th></th></tr></thead>
               <tbody>
                 {outstanding.map((r) => (
                   <tr key={r.id}>
-                    <td><strong>{r.name}</strong></td>
-                    <td>{r.spot || '—'}</td>
-                    <td>{money(r.monthly_amount)}</td>
-                    <td>{Number(r.share_percent) || 0}%</td>
-                    <td><strong>{money(shareAmount(r))}</strong></td>
-                    <td>
+                    <td data-label=""><strong>{r.name}</strong></td>
+                    <td data-label="Spot"><span>{r.spot || '—'}</span></td>
+                    <td data-label="Monthly"><span>{money(r.monthly_amount)}</span></td>
+                    <td data-label="Share"><span>{Number(r.share_percent) || 0}%</span></td>
+                    <td data-label="Owed"><strong>{money(shareAmount(r))}</strong></td>
+                    <td data-label="">
                       <form action={settleWhiskeyMonth}>
                         <input type="hidden" name="id" value={r.id} />
                         <input type="hidden" name="month" value={month} />
@@ -80,6 +81,7 @@ export default async function Whiskey({ searchParams }) {
                 ))}
               </tbody>
             </table>
+            </div>
           </>
         )}
 
