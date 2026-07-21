@@ -254,4 +254,29 @@ tbody tr:hover { background: #fafbfd; }
   width: 28px; height: 28px; min-width: 28px; margin: 0;
   accent-color: var(--blue); cursor: pointer;
 }
+/* ---------- Invoice line items ---------- */
+.lineitem {
+  display: grid;
+  grid-template-columns: 1fr 80px 120px 110px 44px;
+  gap: 10px; align-items: end;
+  padding: 10px 0; border-bottom: 1px solid var(--line);
+}
+.lineitem label { margin: 0 0 4px; font-size: 11.5px; }
+.lineitem:not(:first-child) label { display: none; }
+.li-amt-val {
+  padding: 11px 0; font-weight: 700; text-align: right; color: var(--navy); white-space: nowrap;
+}
+.li-del .btn { padding: 10px 12px; }
+@media (max-width: 720px) {
+  .lineitem {
+    grid-template-columns: 1fr 1fr; gap: 8px 10px;
+    border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px;
+  }
+  .lineitem label { display: block !important; }
+  .li-desc { grid-column: 1 / -1; }
+  .li-amt-val { text-align: left; padding: 6px 0; }
+  .li-del { grid-column: 1 / -1; }
+  .li-del .btn { width: 100%; }
+}
+
 .danger-zone { border-color: #f0c8c5; }

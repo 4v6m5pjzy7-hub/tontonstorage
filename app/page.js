@@ -83,6 +83,7 @@ export default async function Dashboard({ searchParams }) {
         <div className="acts">
           <form action={createIntake}><button className="btn blue">+ New intake link</button></form>
           <Link className="btn alt" href="/add">+ Add existing</Link>
+          <Link className="btn alt" href="/invoices">Invoices</Link>
           <Link className="btn alt" href="/whiskey">Whiskey / Marc</Link>
           <form action={logout}><button className="btn ghost">Log out</button></form>
         </div>

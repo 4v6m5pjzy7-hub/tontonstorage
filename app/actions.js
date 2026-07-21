@@ -22,6 +22,7 @@ import {
   sendSignatureRequest,
   sendSignedCopy,
   sendExecutedCopy,
+  sendInvoiceEmail,
 } from '../lib/email.js';
 
 function token(n = 9) {
@@ -263,6 +264,112 @@ export async function signContract(formData) {
   }
 
   redirect(`/sign/${tok}`);
+}
+
+// ---- Invoices (standalone, separate from storage rentals) ----
+export async function createInvoice() {
+  requireAuth();
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from('invoices')
+    .insert({ token: token(), customer_name: 'New customer', items: [] })
+    .select('id')
+    .single();
+  if (error) throw new Error(error.message);
+  redirect(`/invoices/${data.id}`);
+}
+
+export async function saveInvoice(formData) {
+  requireAuth();
+  const sb = getSupabase();
+  const id = formData.get('id');
+
+  let items = [];
+  try {
+    items = JSON.parse(formData.get('items') || '[]');
+  } catch { items = []; }
+  // drop empty rows so blank lines never print on the invoice
+  items = items
+    .filter((it) => (it.description || '').trim() || Number(it.rate))
+    .map((it) => ({
+      description: (it.description || '').trim(),
+      qty: Number(it.qty) || 0,
+      rate: Number(it.rate) || 0,
+    }));
+
+  const { error } = await sb.from('invoices').update({
+    customer_name: formData.get('customer_name'),
+    customer_email: formData.get('customer_email') || null,
+    customer_phone: formData.get('customer_phone') || null,
+    issued_on: formData.get('issued_on') || null,
+    tax_rate: Number(formData.get('tax_rate')) || 0,
+    notes: formData.get('notes') || null,
+    items,
+  }).eq('id', id);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/invoices/${id}`);
+  redirect(`/invoices/${id}?saved=1`);
+}
+
+export async function emailInvoice(formData) {
+  requireAuth();
+  const sb = getSupabase();
+  const id = formData.get('id');
+  const { data: inv } = await sb.from('invoices').select('*').eq('id', id).single();
+  if (!inv) throw new Error('Invoice not found');
+  if (!inv.customer_email) redirect(`/invoices/${id}?e=noemail`);
+
+  await sendInvoiceEmail(inv);
+  await sb.from('invoices')
+    .update({ status: inv.status === 'paid' ? 'paid' : 'sent', sent_at: new Date().toISOString() })
+    .eq('id', id);
+
+  revalidatePath(`/invoices/${id}`);
+  redirect(`/invoices/${id}?sent=1`);
+}
+
+export async function markInvoicePaid(formData) {
+  requireAuth();
+  const sb = getSupabase();
+  const id = formData.get('id');
+  const unpay = formData.get('unpay') === '1';
+  await sb.from('invoices')
+    .update(unpay
+      ? { status: 'draft', paid_on: null }
+      : { status: 'paid', paid_on: formData.get('paid_on') || new Date().toISOString().slice(0, 10) })
+    .eq('id', id);
+  revalidatePath(`/invoices/${id}`);
+  redirect(`/invoices/${id}`);
+}
+
+export async function deleteInvoice(formData) {
+  requireAuth();
+  const sb = getSupabase();
+  await sb.from('invoices').delete().eq('id', formData.get('id'));
+  revalidatePath('/invoices');
+  redirect('/invoices?deleted=1');
+}
+
+// ---- Service catalogue behind the invoice dropdown ----
+export async function addService(formData) {
+  requireAuth();
+  const sb = getSupabase();
+  const { error } = await sb.from('invoice_services').insert({
+    name: formData.get('name'),
+    default_rate: Number(formData.get('default_rate')) || null,
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath('/invoices');
+  redirect('/invoices?service=1');
+}
+
+export async function deleteService(formData) {
+  requireAuth();
+  const sb = getSupabase();
+  await sb.from('invoice_services').delete().eq('id', formData.get('id'));
+  revalidatePath('/invoices');
+  redirect('/invoices');
 }
 
 // ---- Provider: add an existing customer straight in (no intake link) ----
