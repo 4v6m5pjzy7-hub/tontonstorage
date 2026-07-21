@@ -6,12 +6,19 @@ import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { getSupabase } from '../lib/supabase.js';
 import { requireAuth } from './auth.js';
-import { addMonths, TERM_MONTHS } from '../lib/format.js';
+import {
+  addMonths,
+  TERM_MONTHS,
+  prorateFirstMonth,
+  firstOfNextMonth,
+  lastDayAfterMonths,
+} from '../lib/format.js';
 import {
   sendIntakeLink,
   sendNewIntakeNotice,
   notifyProviderOfChoice,
   sendExtensionOffer,
+  sendPaymentConfirmation,
 } from '../lib/email.js';
 
 function token(n = 9) {
@@ -122,17 +129,40 @@ export async function saveTerms(formData) {
   const id = formData.get('id');
   const termType = formData.get('termType');
   const startDate = formData.get('startDate') || null;
+  const monthlyFee = formData.get('monthlyFee');
   const months = TERM_MONTHS[termType];
-  const endDate = months && startDate ? addMonths(startDate, months) : null;
+  const prorate = formData.get('prorate') === 'on';
+
+  // When prorating, the partial month is billed separately and the fixed term
+  // begins the 1st of the following month so renewals land on month boundaries.
+  let proration = null;
+  let termStart = startDate;
+  let endDate = null;
+  if (prorate && startDate) {
+    proration = prorateFirstMonth(monthlyFee, startDate);
+    termStart = firstOfNextMonth(startDate);
+    endDate = months ? lastDayAfterMonths(termStart, months) : null;
+  } else {
+    endDate = months && startDate ? addMonths(startDate, months) : null;
+  }
+
+  // Preserve any payment already recorded on this rental.
+  const { data: existing } = await sb.from('rentals').select('terms').eq('id', id).single();
 
   const terms = {
     termType,
-    monthlyFee: formData.get('monthlyFee'),
+    monthlyFee,
     paymentSchedule: formData.get('paymentSchedule'),
     paymentMethod: formData.get('paymentMethod'),
     agreementDate: formData.get('agreementDate') || null,
     startDate,
+    termStart,
     endDate,
+    prorate,
+    proration,
+    oneTimeAmount: formData.get('oneTimeAmount') || '',
+    oneTimeLabel: formData.get('oneTimeLabel') || '',
+    payment: existing?.terms?.payment || null,
   };
 
   await sb
@@ -142,6 +172,32 @@ export async function saveTerms(formData) {
 
   revalidatePath(`/admin/${id}`);
   redirect(`/admin/${id}`);
+}
+
+// ---- Provider: record payment + email the customer a confirmation ----
+export async function confirmPayment(formData) {
+  requireAuth();
+  const sb = getSupabase();
+  const id = formData.get('id');
+
+  const { data: rental } = await sb.from('rentals').select('*').eq('id', id).single();
+  if (!rental) throw new Error('Rental not found');
+
+  const payment = {
+    paidAt: formData.get('paidAt') || null,
+    amount: formData.get('amountPaid') || '',
+    method: formData.get('paidMethod') || '',
+    note: formData.get('paidNote') || '',
+    confirmedAt: new Date().toISOString(),
+  };
+
+  const terms = { ...(rental.terms || {}), payment };
+  await sb.from('rentals').update({ terms }).eq('id', id);
+
+  await sendPaymentConfirmation({ ...rental, terms });
+
+  revalidatePath(`/admin/${id}`);
+  redirect(`/admin/${id}?paid=1`);
 }
 
 // ---- Tenant: respond to renewal notice (extend / vacate) ----

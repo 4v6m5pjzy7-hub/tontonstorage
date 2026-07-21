@@ -1,11 +1,11 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getSupabase, supabaseConfigured } from '../../../lib/supabase.js';
-import { saveContactAndSend, saveTerms, sendExtension } from '../../actions.js';
+import { saveContactAndSend, saveTerms, sendExtension, confirmPayment } from '../../actions.js';
 import { StatusPill } from '../../ui.js';
 import CopyButton from '../../CopyButton.js';
 import { emailConfigured } from '../../../lib/email.js';
-import { TERM_LABELS, money, prettyDate, addMonths } from '../../../lib/format.js';
+import { TERM_LABELS, money, prettyDate, addMonths, dueAtSigning } from '../../../lib/format.js';
 import { requireAuth } from '../../auth.js';
 
 export const dynamic = 'force-dynamic';
@@ -25,11 +25,13 @@ export default async function AdminFile({ params, searchParams }) {
   const c = r.client;
   const p = c?.property || {};
   const t = r.terms || {};
+  const due = dueAtSigning(t);
   const contact = r.contact || {};
 
   const banner =
     searchParams?.sent === '1' ? <div className="banner ok">Intake link emailed to the client.</div> :
     searchParams?.ext === '1' ? <div className="banner ok">Extension addendum emailed to the tenant.</div> :
+    searchParams?.paid === '1' ? <div className="banner ok">Payment recorded and confirmation emailed to the customer.</div> :
     null;
 
   const types = [];
@@ -127,11 +129,86 @@ export default async function AdminFile({ params, searchParams }) {
               <div><label>Agreement date</label><input type="date" name="agreementDate" defaultValue={t.agreementDate || ''} /></div>
               <div><label>Start date</label><input type="date" name="startDate" defaultValue={t.startDate || ''} /></div>
             </div>
-            {t.monthlyFee && <p className="muted" style={{ marginTop: 10 }}>Collected up front (first + last month): <strong>{money((Number(t.monthlyFee) || 0) * 2)}</strong>. The last month is held and transfers to the end of any extension.</p>}
-            {t.endDate && <p className="muted" style={{ marginTop: 6 }}>Term end (auto-calculated): <strong>{prettyDate(t.endDate)}</strong>. Renewal notice fires 30 days before.</p>}
+            <fieldset className="fieldset" style={{ marginTop: 16 }}>
+              <legend>Prorate &amp; one-time payment</legend>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
+                <input type="checkbox" name="prorate" defaultChecked={!!t.prorate} style={{ width: 'auto' }} />
+                Prorate the first partial month
+              </label>
+              <p className="muted" style={{ margin: '4px 0 0' }}>
+                Bills the signing day through the end of that month, then the term starts the 1st of the next month.
+              </p>
+              <div className="row" style={{ marginTop: 10 }}>
+                <div><label>One-time payment ($)</label>
+                  <input type="number" name="oneTimeAmount" min="0" step="0.01" defaultValue={t.oneTimeAmount || ''} placeholder="optional" /></div>
+                <div><label>What is it for?</label>
+                  <input type="text" name="oneTimeLabel" defaultValue={t.oneTimeLabel || ''} placeholder="e.g. Deposit, setup fee, prepaid term" /></div>
+              </div>
+            </fieldset>
+
+            {t.monthlyFee && (
+              <div style={{ marginTop: 14, background: '#f2f5fa', borderRadius: 10, padding: '14px 16px' }}>
+                <div style={{ fontWeight: 700, color: 'var(--navy)', marginBottom: 8 }}>Due at signing</div>
+                <dl className="kv" style={{ gridTemplateColumns: '1fr auto', gap: '4px 14px' }}>
+                  {t.proration && (<><dt>Prorated {prettyDate(t.proration.from)} – {prettyDate(t.proration.to)} ({t.proration.days} days)</dt><dd>{money(due.prorated)}</dd></>)}
+                  <dt>First month</dt><dd>{money(due.firstMonth)}</dd>
+                  <dt>Last month (held)</dt><dd>{money(due.lastMonth)}</dd>
+                  {due.oneTime > 0 && (<><dt>{due.oneTimeLabel}</dt><dd>{money(due.oneTime)}</dd></>)}
+                  <dt style={{ fontWeight: 800, color: 'var(--navy)', borderTop: '1px solid #d8dfe8', paddingTop: 6 }}>Total</dt>
+                  <dd style={{ fontWeight: 800, color: 'var(--navy)', borderTop: '1px solid #d8dfe8', paddingTop: 6 }}>{money(due.total)}</dd>
+                </dl>
+                {t.termStart && t.endDate && (
+                  <p className="muted" style={{ marginTop: 10 }}>
+                    Term runs <strong>{prettyDate(t.termStart)}</strong> to <strong>{prettyDate(t.endDate)}</strong>. Renewal notice fires 30 days before.
+                  </p>
+                )}
+                {!t.termStart && t.endDate && (
+                  <p className="muted" style={{ marginTop: 10 }}>Term end: <strong>{prettyDate(t.endDate)}</strong>. Renewal notice fires 30 days before.</p>
+                )}
+              </div>
+            )}
             <div className="actions">
               <button className="btn">Save</button>
               <a className="btn blue" href={`/contract/${r.id}`} target="_blank" rel="noreferrer">Generate contract →</a>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* 3b. Payment received */}
+      {c && t.monthlyFee && (
+        <div className="card">
+          <h2>Payment received</h2>
+          {t.payment?.paidAt ? (
+            <>
+              <div className="banner ok">
+                Paid {money(t.payment.amount)} on {prettyDate(t.payment.paidAt)}
+                {t.payment.method ? ` (${t.payment.method})` : ''}. Confirmation emailed to {c.email}.
+              </div>
+              <p className="muted">Need to correct it? Re-submit below and a new confirmation will be sent.</p>
+            </>
+          ) : (
+            <p className="muted">Once the signed contract and payment come back, record it here and we&apos;ll email the customer a confirmation with their agreement details.</p>
+          )}
+          <form action={confirmPayment}>
+            <input type="hidden" name="id" value={r.id} />
+            <div className="row">
+              <div><label>Date paid</label><input type="date" name="paidAt" defaultValue={t.payment?.paidAt || ''} required /></div>
+              <div><label>Amount paid ($)</label>
+                <input type="number" name="amountPaid" min="0" step="0.01" defaultValue={t.payment?.amount || due.total.toFixed(2)} required /></div>
+            </div>
+            <div className="row">
+              <div><label>Method</label>
+                <select name="paidMethod" defaultValue={t.payment?.method || 'zelle'}>
+                  <option value="Cash">Cash</option>
+                  <option value="Zelle">Zelle</option>
+                  <option value="Card">Card</option>
+                  <option value="Check">Check</option>
+                </select></div>
+              <div><label>Note (optional)</label><input type="text" name="paidNote" defaultValue={t.payment?.note || ''} placeholder="e.g. paid in full" /></div>
+            </div>
+            <div className="actions">
+              <button className="btn blue">Send payment confirmation →</button>
             </div>
           </form>
         </div>
