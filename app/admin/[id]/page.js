@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getSupabase, supabaseConfigured } from '../../../lib/supabase.js';
-import { saveContactAndSend, saveTerms, sendExtension, confirmPayment } from '../../actions.js';
+import { saveContactAndSend, saveTerms, sendExtension, confirmPayment, saveContractProgress, deleteRental } from '../../actions.js';
+import DeleteButton from '../../DeleteButton.js';
 import { StatusPill } from '../../ui.js';
 import CopyButton from '../../CopyButton.js';
 import { emailConfigured } from '../../../lib/email.js';
@@ -32,6 +33,7 @@ export default async function AdminFile({ params, searchParams }) {
     searchParams?.sent === '1' ? <div className="banner ok">Intake link emailed to the client.</div> :
     searchParams?.ext === '1' ? <div className="banner ok">Extension addendum emailed to the tenant.</div> :
     searchParams?.paid === '1' ? <div className="banner ok">Payment recorded and confirmation emailed to the customer.</div> :
+    searchParams?.saved === '1' ? <div className="banner ok">Contract status saved.</div> :
     null;
 
   const types = [];
@@ -175,6 +177,40 @@ export default async function AdminFile({ params, searchParams }) {
         </div>
       )}
 
+      {/* 3a. Contract, signing and special provisions */}
+      {c && t.monthlyFee && (
+        <div className="card">
+          <h2>Contract &amp; signing</h2>
+          <form action={saveContractProgress}>
+            <input type="hidden" name="id" value={r.id} />
+            <div className="row">
+              <div><label>Contract sent to customer on</label>
+                <input type="date" name="contractSentAt" defaultValue={t.contractSentAt || ''} /></div>
+              <div><label>Signed copy received on</label>
+                <input type="date" name="signedAt" defaultValue={t.signedAt || ''} /></div>
+            </div>
+
+            <label style={{ marginTop: 16 }}>Special provisions (one per line)</label>
+            <textarea
+              name="specialProvisions"
+              rows={4}
+              defaultValue={t.specialProvisions || ''}
+              placeholder={'Tenant is permitted to perform welding and repair work on stored barges.\nProvider approval is not required for routine maintenance of Tenant’s equipment.'}
+            />
+            <p className="muted" style={{ marginTop: 6 }}>
+              Anything you put here prints at the bottom of the contract as <strong>Section 14 - Special Provisions</strong> and
+              legally <strong>overrides any conflicting section</strong> above it. Use it to grant exceptions
+              (for example allowing repairs that Permitted Use would otherwise prohibit).
+            </p>
+
+            <div className="actions">
+              <button className="btn">Save contract status</button>
+              <a className="btn blue" href={`/contract/${r.id}`} target="_blank" rel="noreferrer">Preview contract →</a>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* 3b. Payment received */}
       {c && t.monthlyFee && (
         <div className="card">
@@ -247,6 +283,19 @@ export default async function AdminFile({ params, searchParams }) {
           )}
         </div>
       )}
+
+      {/* Delete */}
+      <div className="card danger-zone">
+        <h2 style={{ color: '#b3261e' }}>Delete this rental</h2>
+        <p className="muted">
+          Use this if the customer never signed or backed out. It permanently removes the record,
+          their details and their intake link. This cannot be undone.
+        </p>
+        <form action={deleteRental} style={{ marginTop: 12 }}>
+          <input type="hidden" name="id" value={r.id} />
+          <DeleteButton name={c?.name || ''} />
+        </form>
+      </div>
     </div>
   );
 }

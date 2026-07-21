@@ -146,10 +146,12 @@ export async function saveTerms(formData) {
     endDate = months && startDate ? addMonths(startDate, months) : null;
   }
 
-  // Preserve any payment already recorded on this rental.
+  // Spread the existing terms so payment, signing dates and special
+  // provisions survive a re-save of the deal fields.
   const { data: existing } = await sb.from('rentals').select('terms').eq('id', id).single();
 
   const terms = {
+    ...(existing?.terms || {}),
     termType,
     monthlyFee,
     paymentSchedule: formData.get('paymentSchedule'),
@@ -162,7 +164,6 @@ export async function saveTerms(formData) {
     proration,
     oneTimeAmount: formData.get('oneTimeAmount') || '',
     oneTimeLabel: formData.get('oneTimeLabel') || '',
-    payment: existing?.terms?.payment || null,
   };
 
   await sb
@@ -172,6 +173,38 @@ export async function saveTerms(formData) {
 
   revalidatePath(`/admin/${id}`);
   redirect(`/admin/${id}`);
+}
+
+// ---- Provider: contract sent / signed dates + special provisions ----
+export async function saveContractProgress(formData) {
+  requireAuth();
+  const sb = getSupabase();
+  const id = formData.get('id');
+
+  const { data: rental } = await sb.from('rentals').select('terms').eq('id', id).single();
+  if (!rental) throw new Error('Rental not found');
+
+  const terms = {
+    ...(rental.terms || {}),
+    contractSentAt: formData.get('contractSentAt') || null,
+    signedAt: formData.get('signedAt') || null,
+    specialProvisions: formData.get('specialProvisions') || '',
+  };
+
+  await sb.from('rentals').update({ terms }).eq('id', id);
+  revalidatePath(`/admin/${id}`);
+  redirect(`/admin/${id}?saved=1`);
+}
+
+// ---- Provider: delete a rental that never went anywhere ----
+export async function deleteRental(formData) {
+  requireAuth();
+  const sb = getSupabase();
+  const id = formData.get('id');
+  const { error } = await sb.from('rentals').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+  revalidatePath('/');
+  redirect('/?deleted=1');
 }
 
 // ---- Provider: record payment + email the customer a confirmation ----

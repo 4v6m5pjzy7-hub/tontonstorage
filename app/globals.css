@@ -48,6 +48,23 @@ th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: upp
 .pill.vacating { background: #fde5e8; color: #b3261e; }
 .pill.renewed { background: #e5f5ec; color: var(--ok); }
 .pill.expired { background: #eceff3; color: #6b7688; }
+.pill.lc-awaiting { background: #fdf3e3; color: var(--warn); }
+.pill.lc-to_price { background: #e4f0ff; color: #2166c9; }
+.pill.lc-to_send { background: #ede4ff; color: #6b3fc9; }
+.pill.lc-sent_unsigned { background: #fff2d8; color: #a9741a; }
+.pill.lc-signed_unpaid { background: #ffe9e0; color: #c2551e; }
+.pill.lc-paid { background: #e5f5ec; color: var(--ok); }
+.btn.danger { background: #b3261e; color: #fff; }
+.btn.danger:hover { background: #8f1e17; }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.tabs a {
+  padding: 7px 13px; border-radius: 999px; font-size: 13px; font-weight: 600;
+  text-decoration: none; color: var(--muted); background: #fff; border: 1px solid var(--line);
+}
+.tabs a:hover { border-color: var(--blue); color: var(--blue); }
+.tabs a.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+.tabs a .n { opacity: .65; margin-left: 5px; font-weight: 500; }
+.danger-zone { border-color: #f0c8c5; }
 .linkbox { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 .linkbox input { font-family: monospace; font-size: 13px; min-width: 240px; flex: 1; }
 .fieldset { border: 1px solid var(--line); border-radius: 10px; padding: 8px 16px 16px; margin-top: 12px; }
