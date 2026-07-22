@@ -1,6 +1,35 @@
 import { getSupabase, supabaseConfigured } from '../../../../lib/supabase.js';
-import { sendRenewalNotice } from '../../../../lib/email.js';
-import { daysUntil } from '../../../../lib/format.js';
+import { sendRenewalNotice, sendWhiskeyStatement } from '../../../../lib/email.js';
+import { daysUntil, monthKey, monthLabel } from '../../../../lib/format.js';
+
+// Send Marc his combined Whiskey statement if today is the configured send day
+// and it hasn't already gone out this month. Runs inside the daily cron.
+async function runWhiskeyStatement(sb) {
+  const { data: settings } = await sb.from('whiskey_settings').select('*').eq('id', 1).maybeSingle();
+  if (!settings?.reminders_enabled || !settings.marc_email) return { skipped: 'off or no email' };
+  if (new Date().getDate() !== Number(settings.send_day)) return { skipped: 'not send day' };
+
+  const month = monthKey();
+  const { data: already } = await sb
+    .from('whiskey_statements').select('id').eq('month', month).eq('status', 'sent').limit(1);
+  if (already?.length) return { skipped: 'already sent this month' };
+
+  const { data: spots = [] } = await sb.from('whiskey_rentals').select('*').eq('active', true).order('name');
+  if (spots.length === 0) return { skipped: 'no active spots' };
+
+  let status = 'sent', errMsg = null, total = 0;
+  try {
+    const res = await sendWhiskeyStatement(spots, monthLabel(month), settings.marc_email);
+    total = res.total;
+  } catch (e) {
+    status = 'failed';
+    errMsg = String(e.message || e);
+  }
+  await sb.from('whiskey_statements').insert({
+    month, to_email: settings.marc_email, status, total, spot_count: spots.length, auto: true, error: errMsg,
+  });
+  return { sent: status === 'sent', total, spots: spots.length };
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -56,5 +85,12 @@ export async function GET(request) {
     }
   }
 
-  return Response.json({ checked: rentals.length, notified, purged: purged?.length || 0 });
+  let whiskey = null;
+  try {
+    whiskey = await runWhiskeyStatement(sb);
+  } catch (e) {
+    whiskey = { error: String(e.message || e) };
+  }
+
+  return Response.json({ checked: rentals.length, notified, purged: purged?.length || 0, whiskey });
 }

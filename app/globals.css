@@ -279,4 +279,9 @@ tbody tr:hover { background: #fafbfd; }
   .li-del .btn { width: 100%; }
 }
 
+/* ---------- Whiskey spot cards ---------- */
+.wcard { border: 1px solid var(--line); border-radius: 12px; padding: 16px; background: #fff; }
+.wcard.editing { border-color: var(--blue); background: #fbfcff; }
+.wcard-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+
 .danger-zone { border-color: #f0c8c5; }

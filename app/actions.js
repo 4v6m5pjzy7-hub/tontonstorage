@@ -12,6 +12,8 @@ import {
   prorateFirstMonth,
   firstOfNextMonth,
   lastDayAfterMonths,
+  monthKey,
+  monthLabel,
 } from '../lib/format.js';
 import {
   sendIntakeLink,
@@ -23,6 +25,7 @@ import {
   sendSignedCopy,
   sendExecutedCopy,
   sendInvoiceEmail,
+  sendWhiskeyStatement,
 } from '../lib/email.js';
 
 function token(n = 9) {
@@ -515,6 +518,13 @@ export async function setLocation(formData) {
 }
 
 // ---- Whiskey spots (Marc's own customers - profit share tracking only) ----
+// tonton_percent = the % of rent Marc owes TonTon; Marc keeps the rest.
+function clampPct(v) {
+  const n = Number(v);
+  if (isNaN(n)) return 0;
+  return Math.max(0, Math.min(100, n));
+}
+
 export async function addWhiskey(formData) {
   requireAuth();
   const sb = getSupabase();
@@ -522,11 +532,12 @@ export async function addWhiskey(formData) {
     name: formData.get('name'),
     spot: formData.get('spot') || null,
     monthly_amount: Number(formData.get('monthly_amount')) || 0,
-    share_percent: Number(formData.get('share_percent')) || 0,
+    tonton_percent: clampPct(formData.get('tonton_percent')),
     notes: formData.get('notes') || null,
   });
   if (error) throw new Error(error.message);
   revalidatePath('/whiskey');
+  revalidatePath('/');
   redirect('/whiskey?added=1');
 }
 
@@ -539,11 +550,12 @@ export async function updateWhiskey(formData) {
       name: formData.get('name'),
       spot: formData.get('spot') || null,
       monthly_amount: Number(formData.get('monthly_amount')) || 0,
-      share_percent: Number(formData.get('share_percent')) || 0,
+      tonton_percent: clampPct(formData.get('tonton_percent')),
       active: formData.get('active') === 'on',
     })
     .eq('id', formData.get('id'));
   revalidatePath('/whiskey');
+  revalidatePath('/');
   redirect('/whiskey?saved=1');
 }
 
@@ -552,7 +564,52 @@ export async function deleteWhiskey(formData) {
   const sb = getSupabase();
   await sb.from('whiskey_rentals').delete().eq('id', formData.get('id'));
   revalidatePath('/whiskey');
+  revalidatePath('/');
   redirect('/whiskey?deleted=1');
+}
+
+// ---- Whiskey: Marc email + monthly automation settings ----
+export async function saveWhiskeySettings(formData) {
+  requireAuth();
+  const sb = getSupabase();
+  let day = Number(formData.get('send_day')) || 1;
+  day = Math.max(1, Math.min(28, day));
+  await sb.from('whiskey_settings').update({
+    marc_email: formData.get('marc_email') || null,
+    reminders_enabled: formData.get('reminders_enabled') === 'on',
+    send_day: day,
+    updated_at: new Date().toISOString(),
+  }).eq('id', 1);
+  revalidatePath('/whiskey');
+  redirect('/whiskey?settings=1');
+}
+
+// ---- Whiskey: send the combined statement to Marc now ----
+export async function sendWhiskeyStatementNow() {
+  requireAuth();
+  const sb = getSupabase();
+  const [{ data: settings }, { data: spots = [] }] = await Promise.all([
+    sb.from('whiskey_settings').select('*').eq('id', 1).single(),
+    sb.from('whiskey_rentals').select('*').eq('active', true).order('name'),
+  ]);
+  if (!settings?.marc_email) redirect('/whiskey?e=noemail');
+
+  const month = monthKey();
+  const label = monthLabel(month);
+  let status = 'sent', errMsg = null, total = 0;
+  try {
+    const res = await sendWhiskeyStatement(spots, label, settings.marc_email);
+    total = res.total;
+  } catch (e) {
+    status = 'failed';
+    errMsg = String(e.message || e);
+  }
+  await sb.from('whiskey_statements').insert({
+    month, to_email: settings.marc_email, status, total, spot_count: spots.length, auto: false, error: errMsg,
+  });
+
+  revalidatePath('/whiskey');
+  redirect(status === 'sent' ? '/whiskey?stmt=1' : '/whiskey?stmt=err');
 }
 
 // Tick a Whiskey spot off for a given month (or undo it).
