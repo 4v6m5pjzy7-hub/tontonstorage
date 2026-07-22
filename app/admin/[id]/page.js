@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getSupabase, supabaseConfigured } from '../../../lib/supabase.js';
-import { saveContactAndSend, saveTerms, sendExtension, confirmPayment, saveContractProgress, deleteRental, setLocation, sendSignRequest, providerSign } from '../../actions.js';
+import { saveContactAndSend, saveTerms, sendExtension, confirmPayment, saveContractProgress, deleteRental, setLocation, sendSignRequest, providerSign, updateClient } from '../../actions.js';
+import ClientDetails from '../../ClientDetails.js';
 import DeleteButton from '../../DeleteButton.js';
 import SubmitButton from '../../SubmitButton.js';
 import TermCalculator from '../../TermCalculator.js';
@@ -40,6 +41,7 @@ export default async function AdminFile({ params, searchParams }) {
     searchParams?.sent_sign === '1' ? <div className="banner ok">Signing link emailed to the customer.</div> :
     searchParams?.executed === '1' ? <div className="banner ok">Agreement fully executed. Executed copy emailed to the customer.</div> :
     searchParams?.added === '1' ? <div className="banner ok">Customer added. Review the details below.</div> :
+    searchParams?.client === '1' ? <div className="banner ok">Customer details updated everywhere — profile, contract, documents and future emails.</div> :
     null;
 
   const types = [];
@@ -104,19 +106,13 @@ export default async function AdminFile({ params, searchParams }) {
         {!c ? (
           <div className="empty">Waiting on the client to submit the form.</div>
         ) : (
-          <>
-            <dl className="kv">
-              <dt>Name</dt><dd>{c.name}</dd>
-              <dt>Phone</dt><dd>{c.phone}</dd>
-              <dt>Email</dt><dd>{c.email}</dd>
-              <dt>Stored property</dt><dd>{types.join(', ') || '—'}</dd>
-              <dt>Make / Model</dt><dd>{p.makeModel || '—'}</dd>
-              <dt>Length (overall)</dt><dd>{p.length || '—'}</dd>
-              <dt>License / Reg #</dt><dd>{p.licenseReg || '—'}</dd>
-              <dt>Insurance / Policy #</dt><dd>{p.insurance || '—'}</dd>
-            </dl>
-            <p className="muted" style={{ marginTop: 14 }}>Submitted {r.submitted_at ? new Date(r.submitted_at).toLocaleString('en-US') : ''}</p>
-          </>
+          <ClientDetails
+            rentalId={r.id}
+            client={c}
+            submittedAt={r.submitted_at}
+            signed={!!t.signature?.signedAt}
+            action={updateClient}
+          />
         )}
       </div>
 

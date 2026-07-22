@@ -161,6 +161,46 @@ export async function submitPublicIntake(formData) {
   redirect('/apply?done=1');
 }
 
+// ---- Provider: edit the customer's details after intake ----
+// Everything downstream (contract, addendum, emails, dashboard) renders from
+// this same object at view/send time, so one edit updates all of them.
+export async function updateClient(formData) {
+  requireAuth();
+  const sb = getSupabase();
+  const id = formData.get('id');
+
+  const { data: rental } = await sb.from('rentals').select('client').eq('id', id).single();
+  if (!rental) throw new Error('Rental not found');
+
+  const prev = rental.client || {};
+  const client = {
+    ...prev,
+    name: (formData.get('name') || '').trim(),
+    phone: (formData.get('phone') || '').trim(),
+    email: (formData.get('email') || '').trim(),
+    property: {
+      ...(prev.property || {}),
+      boat: formData.get('boat'),
+      trailer: formData.get('trailer'),
+      rv: formData.get('rv'),
+      vehicle: formData.get('vehicle'),
+      other: formData.get('other'),
+      makeModel: formData.get('makeModel'),
+      length: formData.get('length'),
+      licenseReg: formData.get('licenseReg'),
+      insurance: formData.get('insurance'),
+    },
+    lastEditedAt: new Date().toISOString(),
+  };
+
+  const { error } = await sb.from('rentals').update({ client }).eq('id', id);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/admin/${id}`);
+  revalidatePath('/');
+  redirect(`/admin/${id}?client=1`);
+}
+
 // ---- Provider: set term + rate (finalize the deal) ----
 export async function saveTerms(formData) {
   requireAuth();
